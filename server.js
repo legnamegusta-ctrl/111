@@ -1,8 +1,29 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 app.use(express.json());
+
+const db = new sqlite3.Database('data.db');
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS animals (
+    id TEXT PRIMARY KEY,
+    birthDate TEXT,
+    breed TEXT,
+    status TEXT,
+    peso REAL,
+    updatedAt INTEGER
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS pesagens (
+    id TEXT PRIMARY KEY,
+    animalId TEXT,
+    peso REAL,
+    data TEXT,
+    operador TEXT,
+    updatedAt INTEGER
+  )`);
+});
 
 const animals = {};
 const pesagens = [];
@@ -11,12 +32,34 @@ const lotes = {};
 const despesas = [];
 const receitas = [];
 
+db.all('SELECT * FROM animals', (err, rows) => {
+  if (err) return;
+  rows.forEach(r => {
+    animals[r.id] = { id: r.id, birthDate: r.birthDate, breed: r.breed, status: r.status, peso: r.peso, updatedAt: r.updatedAt };
+  });
+});
+db.all('SELECT * FROM pesagens', (err, rows) => {
+  if (err) return;
+  rows.forEach(r => {
+    const p = { id: r.id, animalId: r.animalId, peso: r.peso, data: r.data, operador: r.operador, updatedAt: r.updatedAt };
+    pesagens.push(p);
+    const a = animals[r.animalId];
+    if (a && (!a.updatedAt || r.updatedAt > a.updatedAt)) {
+      a.peso = r.peso;
+      a.updatedAt = r.updatedAt;
+    }
+  });
+});
+
 app.post('/animals/register', (req, res) => {
   const { tag, birthDate, breed, status } = req.body;
   const id = tag || uuidv4();
-  const animal = { id, birthDate, breed, status };
+  const animal = { id, birthDate, breed, status, updatedAt: Date.now() };
   animals[id] = animal;
-  res.status(201).json(animal);
+  db.run('INSERT OR REPLACE INTO animals (id, birthDate, breed, status, peso, updatedAt) VALUES (?,?,?,?,?,?)',
+    [id, birthDate, breed, status, animal.peso || null, animal.updatedAt],
+    () => res.status(201).json(animal)
+  );
 });
 
 app.get('/animals/:id', (req, res) => {
@@ -32,16 +75,26 @@ app.put('/animals/:id', (req, res) => {
   if (birthDate !== undefined) animal.birthDate = birthDate;
   if (breed !== undefined) animal.breed = breed;
   if (status !== undefined) animal.status = status;
-  res.json(animal);
+  animal.updatedAt = Date.now();
+  db.run('UPDATE animals SET birthDate=?, breed=?, status=?, peso=?, updatedAt=? WHERE id=?',
+    [animal.birthDate, animal.breed, animal.status, animal.peso || null, animal.updatedAt, animal.id],
+    () => res.json(animal)
+  );
 });
 
 app.post('/pesagens', (req, res) => {
   const { animalId, peso, data, operador } = req.body;
   const animal = animals[animalId];
   if (!animal) return res.status(404).json({ error: 'Animal not found' });
-  const pesagem = { id: uuidv4(), animalId, peso, data, operador };
+  const pesagem = { id: uuidv4(), animalId, peso, data, operador, updatedAt: Date.now() };
   pesagens.push(pesagem);
   animal.peso = peso;
+  animal.updatedAt = pesagem.updatedAt;
+  db.serialize(() => {
+    db.run('INSERT OR REPLACE INTO pesagens (id, animalId, peso, data, operador, updatedAt) VALUES (?,?,?,?,?,?)',
+      [pesagem.id, animalId, peso, data, operador, pesagem.updatedAt]);
+    db.run('UPDATE animals SET peso=?, updatedAt=? WHERE id=?', [peso, animal.updatedAt, animalId]);
+  });
   res.status(201).json(pesagem);
 });
 
@@ -204,6 +257,47 @@ function totalWeightGain() {
     return total;
   }, 0);
 }
+
+app.post('/sync', (req, res) => {
+  const { since = 0, animals: incomingAnimals = [], pesagens: incomingPesagens = [] } = req.body;
+  db.serialize(() => {
+    incomingAnimals.forEach(a => {
+      if (a.deleted) {
+        db.run('DELETE FROM animals WHERE id=?', [a.id]);
+        delete animals[a.id];
+        return;
+      }
+      db.get('SELECT updatedAt FROM animals WHERE id=?', [a.id], (err, row) => {
+        if (!row || a.updatedAt > row.updatedAt) {
+          db.run('INSERT OR REPLACE INTO animals (id, birthDate, breed, status, peso, updatedAt) VALUES (?,?,?,?,?,?)',
+            [a.id, a.birthDate, a.breed, a.status, a.peso || null, a.updatedAt]);
+          animals[a.id] = { id: a.id, birthDate: a.birthDate, breed: a.breed, status: a.status, peso: a.peso, updatedAt: a.updatedAt };
+        }
+      });
+    });
+    incomingPesagens.forEach(p => {
+      db.get('SELECT updatedAt FROM pesagens WHERE id=?', [p.id], (err, row) => {
+        if (!row || p.updatedAt > row.updatedAt) {
+          db.run('INSERT OR REPLACE INTO pesagens (id, animalId, peso, data, operador, updatedAt) VALUES (?,?,?,?,?,?)',
+            [p.id, p.animalId, p.peso, p.data, p.operador, p.updatedAt]);
+          const animal = animals[p.animalId];
+          if (animal && (!animal.updatedAt || p.updatedAt > animal.updatedAt)) {
+            animal.peso = p.peso;
+            animal.updatedAt = p.updatedAt;
+            db.run('UPDATE animals SET peso=?, updatedAt=? WHERE id=?', [animal.peso, animal.updatedAt, animal.id]);
+          }
+          const idx = pesagens.findIndex(x => x.id === p.id);
+          if (idx >= 0) pesagens[idx] = p; else pesagens.push(p);
+        }
+      });
+    });
+    db.all('SELECT * FROM animals WHERE updatedAt > ?', [since], (err, animalsRows) => {
+      db.all('SELECT * FROM pesagens WHERE updatedAt > ?', [since], (err2, pesagensRows) => {
+        res.json({ animals: animalsRows, pesagens: pesagensRows, timestamp: Date.now() });
+      });
+    });
+  });
+});
 
 app.get('/dashboard', (req, res) => {
   const totalDespesas = despesas.reduce((s, d) => s + d.valor, 0);
