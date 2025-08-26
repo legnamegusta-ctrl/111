@@ -556,6 +556,12 @@
     setSyncStatus('Sincronizando...', true);
     try {
       const res = await fetch('/forecast');
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const contentType = res.headers.get('content-type') || '';
+      if(!contentType.includes('application/json')){
+        const text = await res.text();
+        throw new Error(`Unexpected content-type: ${contentType} body: ${text.slice(0,100)}`);
+      }
       forecast = await res.json();
       renderPlanejamento();
       renderAlertas();
@@ -641,6 +647,12 @@
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify(payload)
       });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const contentType = res.headers.get('content-type') || '';
+      if(!contentType.includes('application/json')){
+        const text = await res.text();
+        throw new Error(`Unexpected content-type: ${contentType} body: ${text.slice(0,100)}`);
+      }
       const data = await res.json();
       lastSync = data.timestamp;
       save('gado.lastSync', lastSync);
