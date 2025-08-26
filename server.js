@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const sqlite3 = require('sqlite3').verbose();
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
+const { generateForecast } = require('./mlPipeline');
 
 const app = express();
 app.use(express.json());
@@ -421,6 +422,11 @@ app.get('/dashboard', (req, res) => {
     custoMedioPorAnimal,
     custoPorKgGanho
   });
+});
+
+app.get('/forecast', (req, res) => {
+  const result = generateForecast(animals, pesagens, despesas);
+  res.json(result);
 });
 
 app.listen(3000, () => console.log('API running on port 3000'));
