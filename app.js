@@ -61,6 +61,7 @@
   const nascInput = document.getElementById('nascimento');
   const racaInput = document.getElementById('raca');
   const statusSelect = document.getElementById('status');
+  const submitRebanhoBtn = formRebanho.querySelector('button[type="submit"]');
   const scanBtn = document.getElementById('scanTag');
   if (scanBtn) {
     scanBtn.addEventListener('click', async () => {
@@ -120,7 +121,12 @@
     const pesoEntrada = pesoEntradaVal ? Number(pesoEntradaVal) : peso;
     if(!brinco || !peso) return;
     const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada, updatedAt: Date.now()};
-    state.rebanho = [...state.rebanho, animal];
+    const idx = state.rebanho.findIndex(a => a.id === idVal);
+    if(idx >= 0){
+      state.rebanho[idx] = animal;
+    }else{
+      state.rebanho = [...state.rebanho, animal];
+    }
     save('gado.rebanho', state.rebanho);
     markDirtyAnimal(animal);
     if(window.db){
@@ -128,6 +134,7 @@
     }
     formRebanho.reset();
     statusSelect.value = 'ativo';
+    submitRebanhoBtn.textContent = 'Salvar';
     renderAll();
   });
 
@@ -140,17 +147,35 @@
     renderAll();
   }
 
-  function renderRebanho(){
-    tbodyRebanho.innerHTML = '';
-    state.rebanho.forEach(a => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${a.id}</td><td>${a.nascimento || ''}</td><td>${a.raca || ''}</td><td>${a.status || ''}</td><td>${a.brinco}</td><td>${a.peso}</td><td>${a.fornecedor || ''}</td><td>${a.preco ?? ''}</td><td>${a.pesoEntrada ?? ''}</td><td><button data-id="${a.id}">Remover</button></td>`;
-      tbodyRebanho.appendChild(tr);
-    });
-    tbodyRebanho.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => removeAnimal(btn.dataset.id));
-    });
+  function editAnimal(id){
+    const a = state.rebanho.find(an => an.id === id);
+    if(!a) return;
+    idInput.value = a.id;
+    nascInput.value = a.nascimento || '';
+    racaInput.value = a.raca || '';
+    statusSelect.value = a.status || 'ativo';
+    document.getElementById('brinco').value = a.brinco || '';
+    document.getElementById('peso').value = a.peso || '';
+    document.getElementById('fornecedor').value = a.fornecedor || '';
+    document.getElementById('preco').value = a.preco ?? '';
+    document.getElementById('pesoEntrada').value = a.pesoEntrada ?? '';
+    submitRebanhoBtn.textContent = 'Atualizar';
   }
+
+    function renderRebanho(){
+      tbodyRebanho.innerHTML = '';
+      state.rebanho.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${a.id}</td><td>${a.nascimento || ''}</td><td>${a.raca || ''}</td><td>${a.status || ''}</td><td>${a.brinco}</td><td>${a.peso}</td><td>${a.fornecedor || ''}</td><td>${a.preco ?? ''}</td><td>${a.pesoEntrada ?? ''}</td><td><button data-action="edit" data-id="${a.id}">Editar</button><button data-action="remove" data-id="${a.id}">Remover</button></td>`;
+        tbodyRebanho.appendChild(tr);
+      });
+      tbodyRebanho.querySelectorAll('button[data-action="remove"]').forEach(btn => {
+        btn.addEventListener('click', () => removeAnimal(btn.dataset.id));
+      });
+      tbodyRebanho.querySelectorAll('button[data-action="edit"]').forEach(btn => {
+        btn.addEventListener('click', () => editAnimal(btn.dataset.id));
+      });
+    }
 
   // Pesagens
   const formPesagem = document.getElementById('form-pesagem');
