@@ -11,5 +11,10 @@ if (typeof firebase !== 'undefined') {
   };
   firebase.initializeApp(firebaseConfig);
   // Expose Firestore globally for easy access in app.js
-  window.db = firebase.firestore();
+  // Enable offline persistence so the app keeps working without internet
+  const db = firebase.firestore();
+  db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+    console.warn('Firestore persistence could not be enabled', err);
+  });
+  window.db = db;
 }

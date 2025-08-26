@@ -158,7 +158,7 @@
 
 
   async function loadFromFirestore(){
-    if(!window.db) return;
+    if(!window.db || !navigator.onLine) return;
     setSyncStatus('Sincronizando...', true);
     try{
       const snap = await window.db.collection("animals").get();
