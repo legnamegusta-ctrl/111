@@ -17,6 +17,7 @@
   };
   let dirtyAnimals = load('gado.dirtyAnimals', []);
   let lastSync = load('gado.lastSync', 0);
+  let forecast = { predictions: [], custoPorKg: 0 };
 
   // Dados de teste se base vazia
   if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length && !state.tratamentos.length){
@@ -39,7 +40,9 @@
     custos: document.getElementById('tab-custos'),
     vendas: document.getElementById('tab-vendas'),
     saude: document.getElementById('tab-saude'),
-    relatorios: document.getElementById('tab-relatorios')
+    relatorios: document.getElementById('tab-relatorios'),
+    planejamento: document.getElementById('tab-planejamento'),
+    alertas: document.getElementById('tab-alertas')
   };
 
   tabs.forEach(btn => {
@@ -69,6 +72,10 @@
       }
     });
   }
+
+  const tbodyPlanejamento = document.querySelector('#planejamento-list tbody');
+  const tbodyAlertas = document.querySelector('#alertas-list tbody');
+  const alertaCusto = document.getElementById('alerta-custo');
 
   function markDirtyAnimal(animal){
     const idx = dirtyAnimals.findIndex(a => a.id === animal.id);
@@ -310,6 +317,43 @@
     document.getElementById('kpi-break-even').textContent = breakEven.toFixed(2);
   }
 
+  async function updateForecast(){
+    try {
+      const res = await fetch('/forecast');
+      forecast = await res.json();
+      renderPlanejamento();
+      renderAlertas();
+    } catch(err){
+      console.error('Forecast failed', err);
+    }
+  }
+
+  function renderPlanejamento(){
+    if(!tbodyPlanejamento) return;
+    tbodyPlanejamento.innerHTML = '';
+    forecast.predictions.forEach(p => {
+      const animal = state.rebanho.find(a => a.id === p.animalId);
+      if(!animal) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${animal.brinco || ''}</td><td>${p.currentWeight.toFixed(1)}</td><td>${p.predictedWeight.toFixed(1)}</td><td>${p.dailyGain.toFixed(2)}</td>`;
+      tbodyPlanejamento.appendChild(tr);
+    });
+  }
+
+  function renderAlertas(){
+    if(!tbodyAlertas) return;
+    tbodyAlertas.innerHTML = '';
+    const low = forecast.predictions.filter(p => p.dailyGain < 0.5);
+    low.forEach(p => {
+      const animal = state.rebanho.find(a => a.id === p.animalId);
+      if(!animal) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${animal.brinco || ''}</td><td>${p.dailyGain.toFixed(2)}</td>`;
+      tbodyAlertas.appendChild(tr);
+    });
+    if(alertaCusto) alertaCusto.textContent = `Custo por kg projetado: R$ ${forecast.custoPorKg.toFixed(2)}`;
+  }
+
   document.getElementById('exportCsv').addEventListener('click', () => {
     const cabecas = state.rebanho.length;
     const pesoTotal = state.rebanho.reduce((s, a) => s + a.peso, 0);
@@ -389,6 +433,9 @@
     renderVendas();
     renderTratamentos();
     renderRelatorios();
+    renderPlanejamento();
+    renderAlertas();
+    updateForecast();
   }
 
   // Inicializa
