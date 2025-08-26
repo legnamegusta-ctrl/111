@@ -60,14 +60,17 @@
         <input type="number" id="pesoPesagem" required>
         <label for="dataPesagem">Data</label>
         <input type="date" id="dataPesagem" required>
+        <label for="operadorPesagem">Operador</label>
+        <input type="text" id="operadorPesagem" required>
         <button type="submit">Salvar</button>
       </form>
       <table id="pesagens-list">
         <thead>
-          <tr><th>Data</th><th>Brinco</th><th>Peso</th></tr>
+          <tr><th>Data</th><th>Brinco</th><th>Peso</th><th>Operador</th></tr>
         </thead>
         <tbody></tbody>
       </table>
+      <canvas id="pesosChart"></canvas>
     </section>
     <section id="tab-custos" class="hidden">
       <h2>Custos</h2>
@@ -110,9 +113,15 @@
         <div class="kpi">Arrobas totais: <span id="kpi-arrobas">0</span></div>
         <div class="kpi">Break-even (R$/@): <span id="kpi-break-even">0</span></div>
       </div>
+      <div class="exports">
+        <button id="exportCsv">Exportar CSV</button>
+        <button id="exportPdf">Exportar PDF</button>
+      </div>
     </section>
   </main>
   <script src="scanner.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -109,14 +109,18 @@
   const formPesagem = document.getElementById('form-pesagem');
   const selectAnimal = document.getElementById('pesagemAnimalId');
   const tbodyPesagens = document.querySelector('#pesagens-list tbody');
+  const operadorInput = document.getElementById('operadorPesagem');
+  const pesoCtx = document.getElementById('pesosChart').getContext('2d');
+  let pesoChart;
 
   formPesagem.addEventListener('submit', e => {
     e.preventDefault();
     const animalId = selectAnimal.value;
     const peso = Number(document.getElementById('pesoPesagem').value);
     const data = document.getElementById('dataPesagem').value;
-    if(!animalId || !peso || !data) return;
-    const pesagem = {id: crypto.randomUUID(), animalId, data, peso};
+    const operador = operadorInput.value.trim();
+    if(!animalId || !peso || !data || !operador) return;
+    const pesagem = {id: crypto.randomUUID(), animalId, data, peso, operador};
     state.pesagens = [...state.pesagens, pesagem];
     state.rebanho = state.rebanho.map(a => a.id === animalId ? {...a, peso} : a);
     save('gado.pesagens', state.pesagens);
@@ -124,6 +128,7 @@
     formPesagem.reset();
     document.getElementById('dataPesagem').value = new Date().toISOString().split('T')[0];
     renderAll();
+    updatePesoChart(animalId);
   });
 
   function renderPesagens(){
@@ -132,9 +137,25 @@
     state.pesagens.forEach(p => {
       const animal = state.rebanho.find(a => a.id === p.animalId) || {};
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.data}</td><td>${animal.brinco || ''}</td><td>${p.peso}</td>`;
+      tr.innerHTML = `<td>${p.data}</td><td>${animal.brinco || ''}</td><td>${p.peso}</td><td>${p.operador || ''}</td>`;
       tbodyPesagens.appendChild(tr);
     });
+    selectAnimal.onchange = () => updatePesoChart(selectAnimal.value);
+    if (selectAnimal.value) updatePesoChart(selectAnimal.value);
+  }
+
+  function updatePesoChart(animalId){
+    if(!pesoChart){
+      pesoChart = new Chart(pesoCtx, {
+        type: 'line',
+        data: {labels: [], datasets: [{label: 'Peso', data: []}]},
+        options: {}
+      });
+    }
+    const dados = state.pesagens.filter(p => p.animalId === animalId).sort((a,b) => a.data.localeCompare(b.data));
+    pesoChart.data.labels = dados.map(p => p.data);
+    pesoChart.data.datasets[0].data = dados.map(p => p.peso);
+    pesoChart.update();
   }
 
   // Custos
@@ -209,6 +230,44 @@
     document.getElementById('kpi-arrobas').textContent = arrobasTotais.toFixed(2);
     document.getElementById('kpi-break-even').textContent = breakEven.toFixed(2);
   }
+
+  document.getElementById('exportCsv').addEventListener('click', () => {
+    const cabecas = state.rebanho.length;
+    const pesoTotal = state.rebanho.reduce((s, a) => s + a.peso, 0);
+    const pesoMedio = cabecas ? (pesoTotal / cabecas) : 0;
+    const arrobasTotais = pesoTotal / 15;
+    const compras = state.rebanho.reduce((s, a) => s + (a.preco || 0), 0);
+    const custos = state.custos.reduce((s, c) => s + c.valor, 0);
+    const breakEven = (compras + custos) / Math.max(1, arrobasTotais);
+    const csv = `Cabecas,Peso Medio,Peso Total,Arrobas Totais,Break-even\n${cabecas},${pesoMedio.toFixed(1)},${pesoTotal.toFixed(1)},${arrobasTotais.toFixed(2)},${breakEven.toFixed(2)}\n`;
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'relatorio.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('exportPdf').addEventListener('click', () => {
+    const cabecas = state.rebanho.length;
+    const pesoTotal = state.rebanho.reduce((s, a) => s + a.peso, 0);
+    const pesoMedio = cabecas ? (pesoTotal / cabecas) : 0;
+    const arrobasTotais = pesoTotal / 15;
+    const compras = state.rebanho.reduce((s, a) => s + (a.preco || 0), 0);
+    const custos = state.custos.reduce((s, c) => s + c.valor, 0);
+    const breakEven = (compras + custos) / Math.max(1, arrobasTotais);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text('Relatório', 10, 10);
+    let y = 20;
+    doc.text(`Cabeças: ${cabecas}`, 10, y); y += 10;
+    doc.text(`Peso médio (kg): ${pesoMedio.toFixed(1)}`, 10, y); y += 10;
+    doc.text(`Peso total (kg): ${pesoTotal.toFixed(1)}`, 10, y); y += 10;
+    doc.text(`Arrobas totais: ${arrobasTotais.toFixed(2)}`, 10, y); y += 10;
+    doc.text(`Break-even (R$/@): ${breakEven.toFixed(2)}`, 10, y);
+    doc.save('relatorio.pdf');
+  });
 
   function renderAll(){
     renderRebanho();
