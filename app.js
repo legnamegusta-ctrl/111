@@ -12,11 +12,12 @@
     rebanho: load('gado.rebanho', []),
     pesagens: load('gado.pesagens', []),
     custos: load('gado.custos', []),
-    vendas: load('gado.vendas', [])
+    vendas: load('gado.vendas', []),
+    tratamentos: load('gado.tratamentos', [])
   };
 
   // Dados de teste se base vazia
-  if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length){
+  if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length && !state.tratamentos.length){
     state.rebanho = [
       {id: crypto.randomUUID(), nascimento:'2022-01-01', raca:'Nelore', status:'ativo', brinco:'A-001', peso:200, fornecedor:'Leilão X', preco:2200, pesoEntrada:190},
       {id: crypto.randomUUID(), nascimento:'2022-02-15', raca:'Angus', status:'ativo', brinco:'B-010', peso:280, fornecedor:'Fazenda Y', preco:2700, pesoEntrada:270}
@@ -25,6 +26,7 @@
     save('gado.pesagens', state.pesagens);
     save('gado.custos', state.custos);
     save('gado.vendas', state.vendas);
+    save('gado.tratamentos', state.tratamentos);
   }
 
   // Tabs
@@ -34,6 +36,7 @@
     pesagens: document.getElementById('tab-pesagens'),
     custos: document.getElementById('tab-custos'),
     vendas: document.getElementById('tab-vendas'),
+    saude: document.getElementById('tab-saude'),
     relatorios: document.getElementById('tab-relatorios')
   };
 
@@ -89,7 +92,9 @@
 
   function removeAnimal(id){
     state.rebanho = state.rebanho.filter(a => a.id !== id);
+    state.tratamentos = state.tratamentos.filter(t => t.animalId !== id);
     save('gado.rebanho', state.rebanho);
+    save('gado.tratamentos', state.tratamentos);
     renderAll();
   }
 
@@ -215,6 +220,64 @@
     });
   }
 
+  // Saúde
+  const formTratamento = document.getElementById('form-tratamento');
+  const selectTratAnimal = document.getElementById('tratAnimalId');
+  const tbodyTratamentos = document.querySelector('#tratamentos-list tbody');
+  const remindersUl = document.getElementById('tratamentos-reminders');
+
+  if(formTratamento){
+    formTratamento.addEventListener('submit', async e => {
+      e.preventDefault();
+      const animalId = selectTratAnimal.value;
+      const tipo = document.getElementById('tratTipo').value.trim();
+      const descricao = document.getElementById('tratDesc').value.trim();
+      const dataAplicacao = document.getElementById('tratData').value;
+      const proximaDose = document.getElementById('tratProx').value;
+      if(!animalId || !tipo || !dataAplicacao) return;
+      const docsInput = document.getElementById('tratDocs');
+      const documentos = await Promise.all([...docsInput.files].map(f => new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = () => res({nome: f.name, conteudo: reader.result});
+        reader.readAsDataURL(f);
+      })));
+      const tratamento = {id: crypto.randomUUID(), animalId, tipo, descricao, dataAplicacao, proximaDose, documentos};
+      state.tratamentos = [...state.tratamentos, tratamento];
+      save('gado.tratamentos', state.tratamentos);
+      formTratamento.reset();
+      renderAll();
+    });
+  }
+
+  function renderTratamentos(){
+    if(!selectTratAnimal) return;
+    selectTratAnimal.innerHTML = state.rebanho.map(a => `<option value="${a.id}">${a.brinco}</option>`).join('');
+    tbodyTratamentos.innerHTML = '';
+    state.tratamentos.forEach(t => {
+      const animal = state.rebanho.find(a => a.id === t.animalId) || {};
+      const docs = (t.documentos || []).map(d => `<a href="${d.conteudo}" download="${d.nome}">${d.nome}</a>`).join(', ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${animal.brinco || ''}</td><td>${t.tipo || ''}</td><td>${t.dataAplicacao || ''}</td><td>${t.proximaDose || ''}</td><td>${docs}</td>`;
+      tbodyTratamentos.appendChild(tr);
+    });
+    renderReminders();
+  }
+
+  function renderReminders(){
+    if(!remindersUl) return;
+    remindersUl.innerHTML = '';
+    const today = new Date().toISOString().split('T')[0];
+    state.tratamentos
+      .filter(t => t.proximaDose && t.proximaDose > today)
+      .sort((a,b) => a.proximaDose.localeCompare(b.proximaDose))
+      .forEach(t => {
+        const animal = state.rebanho.find(a => a.id === t.animalId) || {};
+        const li = document.createElement('li');
+        li.textContent = `${animal.brinco || ''}: ${t.tipo} em ${t.proximaDose}`;
+        remindersUl.appendChild(li);
+      });
+  }
+
   // Relatórios
   function renderRelatorios(){
     const cabecas = state.rebanho.length;
@@ -274,6 +337,7 @@
     renderPesagens();
     renderCustos();
     renderVendas();
+    renderTratamentos();
     renderRelatorios();
   }
 
