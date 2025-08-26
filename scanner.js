@@ -1,13 +1,20 @@
 async function scanTag() {
+  const overlay = document.getElementById('scanOverlay');
+  overlay && overlay.classList.remove('hidden');
   if ('NDEFReader' in window) {
     try {
       const reader = new NDEFReader();
       await reader.scan();
       return new Promise(resolve => {
-        reader.onreading = e => resolve(e.serialNumber || '');
+        reader.onreading = e => {
+          overlay && overlay.classList.add('hidden');
+          if (navigator.vibrate) navigator.vibrate(200);
+          resolve(e.serialNumber || '');
+        };
       });
     } catch (err) {
       console.error(err);
+      overlay && overlay.classList.add('hidden');
     }
   } else if ('BarcodeDetector' in window) {
     try {
@@ -27,11 +34,17 @@ async function scanTag() {
             detector.detect(canvas).then(codes => {
               if (codes.length) {
                 stream.getTracks().forEach(t => t.stop());
+                overlay && overlay.classList.add('hidden');
+                if (navigator.vibrate) navigator.vibrate(200);
                 resolve(codes[0].rawValue);
               } else {
                 requestAnimationFrame(scan);
               }
-            }).catch(reject);
+            }).catch(err2 => {
+              stream.getTracks().forEach(t => t.stop());
+              overlay && overlay.classList.add('hidden');
+              reject(err2);
+            });
           } else {
             requestAnimationFrame(scan);
           }
@@ -40,8 +53,10 @@ async function scanTag() {
       });
     } catch (err) {
       console.error(err);
+      overlay && overlay.classList.add('hidden');
     }
   } else {
+    overlay && overlay.classList.add('hidden');
     alert('Leitor RFID/QR não suportado neste navegador.');
   }
 }

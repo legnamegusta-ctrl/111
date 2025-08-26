@@ -9,44 +9,53 @@
   <header>
     <h1>Gestão de Gado de Corte</h1>
     <nav class="tabs">
-      <button type="button" data-tab="rebanho" aria-selected="true">Rebanho</button>
-      <button type="button" data-tab="pesagens" aria-selected="false">Pesagens</button>
-      <button type="button" data-tab="custos" aria-selected="false">Custos</button>
-      <button type="button" data-tab="vendas" aria-selected="false">Vendas</button>
-      <button type="button" data-tab="saude" aria-selected="false">Saúde</button>
-      <button type="button" data-tab="relatorios" aria-selected="false">Relatórios</button>
-      <button type="button" data-tab="planejamento" aria-selected="false">Planejamento</button>
-      <button type="button" data-tab="alertas" aria-selected="false">Alertas</button>
+      <button type="button" data-tab="rebanho" aria-selected="true"><span class="icon" data-feather="list"></span>Rebanho</button>
+      <button type="button" data-tab="pesagens" aria-selected="false"><span class="icon" data-feather="activity"></span>Pesagens</button>
+      <button type="button" data-tab="custos" aria-selected="false"><span class="icon" data-feather="dollar-sign"></span>Custos</button>
+      <button type="button" data-tab="vendas" aria-selected="false"><span class="icon" data-feather="shopping-cart"></span>Vendas</button>
+      <button type="button" data-tab="saude" aria-selected="false"><span class="icon" data-feather="heart"></span>Saúde</button>
+      <button type="button" data-tab="relatorios" aria-selected="false"><span class="icon" data-feather="bar-chart-2"></span>Relatórios</button>
+      <button type="button" data-tab="planejamento" aria-selected="false"><span class="icon" data-feather="calendar"></span>Planejamento</button>
+      <button type="button" data-tab="alertas" aria-selected="false"><span class="icon" data-feather="bell"></span>Alertas</button>
     </nav>
   </header>
-  <div id="syncStatus"></div>
+  <div class="sync-area"><div id="syncStatus"></div><button id="manualSync">Sincronizar</button></div>
+  <div id="scanOverlay" class="hidden"><p>Aproxime a etiqueta ou enquadre o código</p></div>
   <main class="container">
     <section id="tab-rebanho">
       <h2>Rebanho</h2>
       <form id="form-rebanho">
-        <label for="animalId">ID</label>
-        <input type="text" id="animalId">
-        <button type="button" id="scanTag">Ler RFID/QR</button>
-        <label for="nascimento">Data Nascimento</label>
-        <input type="date" id="nascimento">
-        <label for="raca">Raça</label>
-        <input type="text" id="raca">
-        <label for="status">Status</label>
-        <select id="status">
-          <option value="ativo">Ativo</option>
-          <option value="vendido">Vendido</option>
-        </select>
-        <label for="brinco">Brinco</label>
-        <input type="text" id="brinco" required>
-        <label for="peso">Peso (kg)</label>
-        <input type="number" id="peso" required>
-        <label for="fornecedor">Fornecedor</label>
-        <input type="text" id="fornecedor">
-        <label for="preco">Preço (R$)</label>
-        <input type="number" id="preco">
-        <label for="pesoEntrada">Peso Entrada (kg)</label>
-        <input type="number" id="pesoEntrada">
-        <button type="submit">Salvar</button>
+        <fieldset class="step" data-step="0">
+          <label for="animalId">ID</label>
+          <input type="text" id="animalId">
+          <button type="button" id="scanTag">Ler RFID/QR</button>
+          <label for="nascimento">Data Nascimento</label>
+          <input type="date" id="nascimento">
+          <label for="raca">Raça</label>
+          <input type="text" id="raca">
+          <label for="status">Status</label>
+          <select id="status">
+            <option value="ativo">Ativo</option>
+            <option value="vendido">Vendido</option>
+          </select>
+          <label for="brinco">Brinco</label>
+          <input type="text" id="brinco" required>
+          <button type="button" class="nextStep">Próximo</button>
+        </fieldset>
+        <fieldset class="step hidden" data-step="1">
+          <label for="peso">Peso (kg)</label>
+          <input type="number" id="peso" required>
+          <label for="fornecedor">Fornecedor</label>
+          <input type="text" id="fornecedor">
+          <label for="preco">Preço (R$)</label>
+          <input type="number" id="preco">
+          <label for="pesoEntrada">Peso Entrada (kg)</label>
+          <input type="number" id="pesoEntrada">
+          <div class="step-nav">
+            <button type="button" class="prevStep">Voltar</button>
+            <button type="submit">Salvar</button>
+          </div>
+        </fieldset>
       </form>
       <input type="text" id="searchRebanho" placeholder="Buscar por brinco ou ID">
       <table id="rebanho-list">
@@ -175,6 +184,8 @@
   <script src="scanner.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <script src="app.js"></script>
+  <div id="toast" class="hidden"></div>
 </body>
 </html>
