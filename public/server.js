@@ -7,9 +7,6 @@ const { generateForecast } = require('./mlPipeline');
 
 const app = express();
 app.use(express.json());
-// Serve static assets from the current directory so the frontend and API can
-// be hosted together when running the server locally.
-app.use(express.static(__dirname));
 
 const db = new sqlite3.Database('data.db');
 db.serialize(() => {
@@ -431,5 +428,10 @@ app.get('/forecast', (req, res) => {
   const result = generateForecast(animals, pesagens, despesas);
   res.json(result);
 });
+
+// After all API routes are defined, serve static assets so that API endpoints
+// are not intercepted by the static middleware (which would return HTML and
+// break JSON clients).
+app.use(express.static(__dirname));
 
 app.listen(3000, () => console.log('API running on port 3000'));
