@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestão de Gado de Corte</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Gestão de Gado de Corte</h1>
+    <nav class="tabs">
+      <button type="button" data-tab="rebanho" aria-selected="true">Rebanho</button>
+      <button type="button" data-tab="pesagens" aria-selected="false">Pesagens</button>
+      <button type="button" data-tab="custos" aria-selected="false">Custos</button>
+      <button type="button" data-tab="vendas" aria-selected="false">Vendas</button>
+      <button type="button" data-tab="relatorios" aria-selected="false">Relatórios</button>
+    </nav>
+  </header>
+  <main class="container">
+    <section id="tab-rebanho">
+      <h2>Rebanho</h2>
+      <form id="form-rebanho">
+        <label for="brinco">Brinco</label>
+        <input type="text" id="brinco" required>
+        <label for="peso">Peso (kg)</label>
+        <input type="number" id="peso" required>
+        <label for="fornecedor">Fornecedor</label>
+        <input type="text" id="fornecedor">
+        <label for="preco">Preço (R$)</label>
+        <input type="number" id="preco">
+        <label for="pesoEntrada">Peso Entrada (kg)</label>
+        <input type="number" id="pesoEntrada">
+        <button type="submit">Salvar</button>
+      </form>
+      <table id="rebanho-list">
+        <thead>
+          <tr><th>Brinco</th><th>Peso</th><th>Fornecedor</th><th>Preço</th><th>Peso Entrada</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section id="tab-pesagens" class="hidden">
+      <h2>Pesagens</h2>
+      <form id="form-pesagem">
+        <label for="pesagemAnimalId">Animal</label>
+        <select id="pesagemAnimalId"></select>
+        <label for="pesoPesagem">Peso (kg)</label>
+        <input type="number" id="pesoPesagem" required>
+        <label for="dataPesagem">Data</label>
+        <input type="date" id="dataPesagem" required>
+        <button type="submit">Salvar</button>
+      </form>
+      <table id="pesagens-list">
+        <thead>
+          <tr><th>Data</th><th>Brinco</th><th>Peso</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section id="tab-custos" class="hidden">
+      <h2>Custos</h2>
+      <form id="form-custo">
+        <label for="custoDesc">Descrição</label>
+        <input type="text" id="custoDesc" required>
+        <label for="custoValor">Valor (R$)</label>
+        <input type="number" id="custoValor" required>
+        <button type="submit">Salvar</button>
+      </form>
+      <table id="custos-list">
+        <thead>
+          <tr><th>Descrição</th><th>Valor (R$)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p>Total: R$ <span id="custos-total">0.00</span></p>
+    </section>
+    <section id="tab-vendas" class="hidden">
+      <h2>Vendas</h2>
+      <form id="form-venda">
+        <label for="precoArroba">Preço (@)</label>
+        <input type="number" id="precoArroba" required>
+        <div id="vendaAnimais"></div>
+        <button type="submit">Salvar</button>
+      </form>
+      <table id="vendas-list">
+        <thead>
+          <tr><th>Data</th><th>Qtd Animais</th><th>Preço (@)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section id="tab-relatorios" class="hidden">
+      <h2>Relatórios</h2>
+      <div class="kpis">
+        <div class="kpi">Cabeças: <span id="kpi-cabecas">0</span></div>
+        <div class="kpi">Peso médio (kg): <span id="kpi-peso-medio">0</span></div>
+        <div class="kpi">Peso total (kg): <span id="kpi-peso-total">0</span></div>
+        <div class="kpi">Arrobas totais: <span id="kpi-arrobas">0</span></div>
+        <div class="kpi">Break-even (R$/@): <span id="kpi-break-even">0</span></div>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
