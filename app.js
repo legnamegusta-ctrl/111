@@ -63,6 +63,7 @@
   const statusSelect = document.getElementById('status');
   const submitRebanhoBtn = formRebanho.querySelector('button[type="submit"]');
   const scanBtn = document.getElementById('scanTag');
+  const searchRebanho = document.getElementById('searchRebanho');
   if (scanBtn) {
     scanBtn.addEventListener('click', async () => {
       try {
@@ -77,6 +78,15 @@
   const tbodyPlanejamento = document.querySelector('#planejamento-list tbody');
   const tbodyAlertas = document.querySelector('#alertas-list tbody');
   const alertaCusto = document.getElementById('alerta-custo');
+
+  function filterRebanho(texto){
+    const q = texto.trim().toLowerCase();
+    if(!q) return state.rebanho;
+    return state.rebanho.filter(a =>
+      (a.brinco && a.brinco.toLowerCase().includes(q)) ||
+      (a.id && a.id.toLowerCase().includes(q))
+    );
+  }
 
   function markDirtyAnimal(animal){
     const idx = dirtyAnimals.findIndex(a => a.id === animal.id);
@@ -164,7 +174,8 @@
 
     function renderRebanho(){
       tbodyRebanho.innerHTML = '';
-      state.rebanho.forEach(a => {
+      const lista = filterRebanho(searchRebanho ? searchRebanho.value : '');
+      lista.forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${a.id}</td><td>${a.nascimento || ''}</td><td>${a.raca || ''}</td><td>${a.status || ''}</td><td>${a.brinco}</td><td>${a.peso}</td><td>${a.fornecedor || ''}</td><td>${a.preco ?? ''}</td><td>${a.pesoEntrada ?? ''}</td><td><button data-action="edit" data-id="${a.id}">Editar</button><button data-action="remove" data-id="${a.id}">Remover</button></td>`;
         tbodyRebanho.appendChild(tr);
@@ -175,6 +186,10 @@
       tbodyRebanho.querySelectorAll('button[data-action="edit"]').forEach(btn => {
         btn.addEventListener('click', () => editAnimal(btn.dataset.id));
       });
+    }
+
+    if (searchRebanho) {
+      searchRebanho.addEventListener('input', renderRebanho);
     }
 
   // Pesagens
