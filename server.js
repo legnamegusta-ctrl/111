@@ -1,6 +1,8 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const sqlite3 = require('sqlite3').verbose();
+const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
 
 const app = express();
 app.use(express.json());
@@ -258,6 +260,61 @@ function totalWeightGain() {
   }, 0);
 }
 
+function calculateKPIs({ start, end, loteId, categoria }) {
+  const startDate = start ? new Date(start) : null;
+  const endDate = end ? new Date(end) : null;
+
+  let selectedAnimals = Object.values(animals);
+  if (categoria) selectedAnimals = selectedAnimals.filter(a => a.breed === categoria);
+  if (loteId) {
+    const lote = lotes[loteId];
+    if (lote) {
+      const ids = new Set(lote.animalIds);
+      selectedAnimals = selectedAnimals.filter(a => ids.has(a.id));
+    } else {
+      selectedAnimals = [];
+    }
+  }
+  const lotacao = selectedAnimals.length;
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  let totalGain = 0;
+  let totalDailyGain = 0;
+  let animalsWithData = 0;
+  const animalIdSet = new Set(selectedAnimals.map(a => a.id));
+
+  selectedAnimals.forEach(animal => {
+    const list = pesagens
+      .filter(p => p.animalId === animal.id)
+      .filter(p => (!startDate || new Date(p.data) >= startDate) && (!endDate || new Date(p.data) <= endDate))
+      .sort((a, b) => new Date(a.data) - new Date(b.data));
+    if (list.length > 1) {
+      const first = list[0];
+      const last = list[list.length - 1];
+      const gain = last.peso - first.peso;
+      const days = (new Date(last.data) - new Date(first.data)) / msPerDay;
+      if (gain > 0 && days > 0) {
+        totalGain += gain;
+        totalDailyGain += gain / days;
+        animalsWithData++;
+      }
+    }
+  });
+  const ganhoMedioDiario = animalsWithData ? totalDailyGain / animalsWithData : 0;
+
+  const despesasFiltradas = despesas.filter(d => {
+    if (startDate && new Date(d.data) < startDate) return false;
+    if (endDate && new Date(d.data) > endDate) return false;
+    if (d.animalId) return animalIdSet.has(d.animalId);
+    if (d.loteId) return !loteId || d.loteId === loteId;
+    return true;
+  });
+  const totalDespesas = despesasFiltradas.reduce((s, d) => s + d.valor, 0);
+  const custoPorKg = totalGain > 0 ? totalDespesas / totalGain : 0;
+
+  return { lotacao, ganhoMedioDiario, custoPorKg };
+}
+
 app.post('/sync', (req, res) => {
   const { since = 0, animals: incomingAnimals = [], pesagens: incomingPesagens = [] } = req.body;
   db.serialize(() => {
@@ -297,6 +354,56 @@ app.post('/sync', (req, res) => {
       });
     });
   });
+});
+
+app.get('/kpis', (req, res) => {
+  const { start, end, loteId, categoria } = req.query;
+  const kpis = calculateKPIs({ start, end, loteId, categoria });
+  res.json(kpis);
+});
+
+app.get('/kpis/export', async (req, res) => {
+  const { start, end, loteId, categoria, format } = req.query;
+  const kpis = calculateKPIs({ start, end, loteId, categoria });
+  if (format === 'pdf') {
+    const doc = new PDFDocument();
+    const chunks = [];
+    doc.on('data', c => chunks.push(c));
+    doc.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="kpis.pdf"');
+      res.send(buffer);
+    });
+    doc.text('KPIs');
+    Object.entries(kpis).forEach(([k, v]) => doc.text(`${k}: ${v}`));
+    doc.end();
+    return;
+  }
+  if (format === 'excel') {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('KPIs');
+    ws.addRow(['KPI', 'Valor']);
+    Object.entries(kpis).forEach(([k, v]) => ws.addRow([k, v]));
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="kpis.xlsx"');
+    res.send(buffer);
+    return;
+  }
+  if (format === 'image') {
+    const entries = Object.entries(kpis);
+    const svgHeight = (entries.length + 1) * 20 + 10;
+    const lines = entries
+      .map(([k, v], i) => `<text x="10" y="${(i + 2) * 20}">${k}: ${v}</text>`)
+      .join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="${svgHeight}"><style>text{font-size:16px;}</style><text x="10" y="20">KPIs</text>${lines}</svg>`;
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Content-Disposition', 'attachment; filename="kpis.svg"');
+    res.send(svg);
+    return;
+  }
+  res.status(400).json({ error: 'Invalid format' });
 });
 
 app.get('/dashboard', (req, res) => {
