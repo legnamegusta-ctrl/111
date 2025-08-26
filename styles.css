@@ -13,3 +13,25 @@ tbody tr:nth-child(odd) {background: #f9f9f9;}
 :focus {outline: 2px solid #09f; outline-offset: 2px;}
 .kpis {display: flex; gap: 1rem; flex-wrap: wrap;}
 .kpi {padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 4px;}
+
+#syncStatus {text-align: center; margin: 0.5rem;}
+#syncStatus.loading::after {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-top-color: #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 0.5rem;
+}
+@keyframes spin {to {transform: rotate(360deg);}}
+
+@media (max-width: 600px){
+  nav.tabs{flex-wrap: nowrap; overflow-x: auto;}
+  nav.tabs button{flex: 0 0 auto; padding: 0.75rem; min-height: 44px;}
+  .container{padding: 0.5rem;}
+  form{grid-template-columns: 1fr; gap: 0.75rem;}
+  button, input, select{min-height:44px;}
+}
