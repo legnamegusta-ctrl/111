@@ -7,6 +7,9 @@ const { generateForecast } = require('./mlPipeline');
 
 const app = express();
 app.use(express.json());
+// Serve static assets from the current directory so the frontend and API can
+// be hosted together when running the server locally.
+app.use(express.static(__dirname));
 
 const db = new sqlite3.Database('data.db');
 db.serialize(() => {
