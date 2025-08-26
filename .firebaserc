@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "agropecuaria3l-b9bcc"
-  }
+    "default": "agropecuaria3l-b9bcc",
+    "defalut": "agropecuaria3l-b9bcc"
+  },
+  "targets": {},
+  "etags": {}
 }
