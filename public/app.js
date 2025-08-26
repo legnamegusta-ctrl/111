@@ -18,6 +18,11 @@
   let dirtyAnimals = load('gado.dirtyAnimals', []);
   let lastSync = load('gado.lastSync', 0);
   let forecast = { predictions: [], custoPorKg: 0 };
+  // Base URL for API requests. When the app is served from a different
+  // origin (e.g. Firebase hosting on port 5000), the API may still be
+  // running locally on port 3000. Use relative paths when hosted by the
+  // API server itself and fall back to localhost:3000 otherwise.
+  const API_BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
 
   const syncStatusEl = document.getElementById('syncStatus');
   const manualSyncBtn = document.getElementById('manualSync');
@@ -555,7 +560,7 @@
   async function updateForecast(){
     setSyncStatus('Sincronizando...', true);
     try {
-      const res = await fetch('/forecast');
+      const res = await fetch(`${API_BASE}/forecast`);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const contentType = res.headers.get('content-type') || '';
       if(!contentType.includes('application/json')){
@@ -642,7 +647,7 @@
     setSyncStatus('Sincronizando...', true);
     try{
       const payload = { since: lastSync, animals: dirtyAnimals, pesagens: [] };
-      const res = await fetch('/sync', {
+      const res = await fetch(`${API_BASE}/sync`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify(payload)
