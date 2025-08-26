@@ -20,6 +20,18 @@
     <section id="tab-rebanho">
       <h2>Rebanho</h2>
       <form id="form-rebanho">
+        <label for="animalId">ID</label>
+        <input type="text" id="animalId">
+        <button type="button" id="scanTag">Ler RFID/QR</button>
+        <label for="nascimento">Data Nascimento</label>
+        <input type="date" id="nascimento">
+        <label for="raca">Raça</label>
+        <input type="text" id="raca">
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="ativo">Ativo</option>
+          <option value="vendido">Vendido</option>
+        </select>
         <label for="brinco">Brinco</label>
         <input type="text" id="brinco" required>
         <label for="peso">Peso (kg)</label>
@@ -34,7 +46,7 @@
       </form>
       <table id="rebanho-list">
         <thead>
-          <tr><th>Brinco</th><th>Peso</th><th>Fornecedor</th><th>Preço</th><th>Peso Entrada</th><th></th></tr>
+          <tr><th>ID</th><th>Nasc.</th><th>Raça</th><th>Status</th><th>Brinco</th><th>Peso</th><th>Fornecedor</th><th>Preço</th><th>Peso Entrada</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -100,6 +112,7 @@
       </div>
     </section>
   </main>
+  <script src="scanner.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
