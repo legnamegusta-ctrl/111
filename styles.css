@@ -1,0 +1,15 @@
+body {font-family: sans-serif; margin: 0; padding: 0;}
+header {background: #eef; padding: 1rem; text-align: center;}
+nav.tabs {display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem;}
+nav.tabs button {padding: 0.5rem 1rem; border: 1px solid #ccc; background: #fff; border-radius: 5px; cursor: pointer;}
+nav.tabs button[aria-selected="true"] {background: #ddd;}
+.container {max-width: 900px; margin: 1rem auto; padding: 1rem;}
+form {display: grid; gap: 0.5rem; max-width: 400px;}
+button {border-radius: 4px;}
+table {width: 100%; border-collapse: collapse; margin-top: 1rem;}
+th, td {border: 1px solid #ccc; padding: 0.5rem; text-align: left;}
+tbody tr:nth-child(odd) {background: #f9f9f9;}
+.hidden {display: none;}
+:focus {outline: 2px solid #09f; outline-offset: 2px;}
+.kpis {display: flex; gap: 1rem; flex-wrap: wrap;}
+.kpi {padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 4px;}
