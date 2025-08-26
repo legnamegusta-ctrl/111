@@ -19,6 +19,17 @@
   let lastSync = load('gado.lastSync', 0);
   let forecast = { predictions: [], custoPorKg: 0 };
 
+  const syncStatusEl = document.getElementById('syncStatus');
+  function setSyncStatus(msg, loading=false){
+    if(syncStatusEl){
+      syncStatusEl.textContent = msg;
+      syncStatusEl.classList.toggle('loading', loading);
+    }
+  }
+  if('Notification' in window && Notification.permission === 'default'){
+    Notification.requestPermission();
+  }
+
   // Dados de teste se base vazia
   if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length && !state.tratamentos.length){
     state.rebanho = [
@@ -62,6 +73,8 @@
   const racaInput = document.getElementById('raca');
   const statusSelect = document.getElementById('status');
   const submitRebanhoBtn = formRebanho.querySelector('button[type="submit"]');
+  const brincoInput = document.getElementById('brinco');
+  const pesoInput = document.getElementById('peso');
   const scanBtn = document.getElementById('scanTag');
   const searchRebanho = document.getElementById('searchRebanho');
   if (scanBtn) {
@@ -103,6 +116,7 @@
 
   async function loadFromFirestore(){
     if(!window.db) return;
+    setSyncStatus('Sincronizando...', true);
     try{
       const snap = await window.db.collection("animals").get();
       const animals = snap.docs.map(d => d.data());
@@ -111,8 +125,11 @@
         save("gado.rebanho", state.rebanho);
         renderAll();
       }
+      setSyncStatus('Atualizado');
     }catch(err){
       console.error("Firebase fetch failed", err);
+      setSyncStatus('Falha');
+      alert('Falha ao carregar dados');
     }
   }
 
@@ -122,14 +139,25 @@
     const nascimento = nascInput.value;
     const raca = racaInput.value.trim();
     const status = statusSelect.value;
-    const brinco = document.getElementById('brinco').value.trim();
-    const peso = Number(document.getElementById('peso').value);
+    const brinco = brincoInput.value.trim();
+    const peso = Number(pesoInput.value);
     const fornecedor = document.getElementById('fornecedor').value.trim();
     const precoVal = document.getElementById('preco').value;
     const preco = precoVal ? Number(precoVal) : undefined;
     const pesoEntradaVal = document.getElementById('pesoEntrada').value;
     const pesoEntrada = pesoEntradaVal ? Number(pesoEntradaVal) : peso;
-    if(!brinco || !peso) return;
+    if(!brinco){
+      brincoInput.setCustomValidity('Informe o brinco');
+      brincoInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else brincoInput.setCustomValidity('');
+    if(!peso){
+      pesoInput.setCustomValidity('Informe o peso');
+      pesoInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else pesoInput.setCustomValidity('');
     const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada, updatedAt: Date.now()};
     const idx = state.rebanho.findIndex(a => a.id === idVal);
     if(idx >= 0){
@@ -142,10 +170,15 @@
     if(window.db){
       window.db.collection("animals").doc(idVal).set(animal).catch(err => console.error("Firebase save failed", err));
     }
-    formRebanho.reset();
-    statusSelect.value = 'ativo';
-    submitRebanhoBtn.textContent = 'Salvar';
-    renderAll();
+    try{
+      formRebanho.reset();
+      statusSelect.value = 'ativo';
+      submitRebanhoBtn.textContent = 'Salvar';
+      renderAll();
+      alert('Animal salvo com sucesso');
+    }catch(err){
+      alert('Erro ao salvar animal');
+    }
   });
 
   function removeAnimal(id){
@@ -197,25 +230,55 @@
   const selectAnimal = document.getElementById('pesagemAnimalId');
   const tbodyPesagens = document.querySelector('#pesagens-list tbody');
   const operadorInput = document.getElementById('operadorPesagem');
+  const pesoPesagemInput = document.getElementById('pesoPesagem');
+  const dataPesagemInput = document.getElementById('dataPesagem');
   const pesoCtx = document.getElementById('pesosChart').getContext('2d');
   let pesoChart;
 
   formPesagem.addEventListener('submit', e => {
     e.preventDefault();
     const animalId = selectAnimal.value;
-    const peso = Number(document.getElementById('pesoPesagem').value);
-    const data = document.getElementById('dataPesagem').value;
+    const peso = Number(pesoPesagemInput.value);
+    const data = dataPesagemInput.value;
     const operador = operadorInput.value.trim();
-    if(!animalId || !peso || !data || !operador) return;
-    const pesagem = {id: crypto.randomUUID(), animalId, data, peso, operador};
-    state.pesagens = [...state.pesagens, pesagem];
-    state.rebanho = state.rebanho.map(a => a.id === animalId ? {...a, peso} : a);
-    save('gado.pesagens', state.pesagens);
-    save('gado.rebanho', state.rebanho);
-    formPesagem.reset();
-    document.getElementById('dataPesagem').value = new Date().toISOString().split('T')[0];
-    renderAll();
-    updatePesoChart(animalId);
+    if(!animalId){
+      selectAnimal.setCustomValidity('Selecione um animal');
+      selectAnimal.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else selectAnimal.setCustomValidity('');
+    if(!peso){
+      pesoPesagemInput.setCustomValidity('Informe o peso');
+      pesoPesagemInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else pesoPesagemInput.setCustomValidity('');
+    if(!data){
+      dataPesagemInput.setCustomValidity('Informe a data');
+      dataPesagemInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else dataPesagemInput.setCustomValidity('');
+    if(!operador){
+      operadorInput.setCustomValidity('Informe o operador');
+      operadorInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else operadorInput.setCustomValidity('');
+    try{
+      const pesagem = {id: crypto.randomUUID(), animalId, data, peso, operador};
+      state.pesagens = [...state.pesagens, pesagem];
+      state.rebanho = state.rebanho.map(a => a.id === animalId ? {...a, peso} : a);
+      save('gado.pesagens', state.pesagens);
+      save('gado.rebanho', state.rebanho);
+      formPesagem.reset();
+      dataPesagemInput.value = new Date().toISOString().split('T')[0];
+      renderAll();
+      updatePesoChart(animalId);
+      alert('Pesagem salva com sucesso');
+    }catch(err){
+      alert('Erro ao salvar pesagem');
+    }
   });
 
   function renderPesagens(){
@@ -249,17 +312,35 @@
   const formCusto = document.getElementById('form-custo');
   const tbodyCustos = document.querySelector('#custos-list tbody');
   const custosTotal = document.getElementById('custos-total');
+  const custoDescInput = document.getElementById('custoDesc');
+  const custoValorInput = document.getElementById('custoValor');
 
   formCusto.addEventListener('submit', e => {
     e.preventDefault();
-    const desc = document.getElementById('custoDesc').value.trim();
-    const valor = Number(document.getElementById('custoValor').value);
-    if(!desc || !valor) return;
-    const custo = {id: crypto.randomUUID(), desc, valor};
-    state.custos = [...state.custos, custo];
-    save('gado.custos', state.custos);
-    formCusto.reset();
-    renderAll();
+    const desc = custoDescInput.value.trim();
+    const valor = Number(custoValorInput.value);
+    if(!desc){
+      custoDescInput.setCustomValidity('Informe a descrição');
+      custoDescInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else custoDescInput.setCustomValidity('');
+    if(!valor){
+      custoValorInput.setCustomValidity('Informe o valor');
+      custoValorInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else custoValorInput.setCustomValidity('');
+    try{
+      const custo = {id: crypto.randomUUID(), desc, valor};
+      state.custos = [...state.custos, custo];
+      save('gado.custos', state.custos);
+      formCusto.reset();
+      renderAll();
+      alert('Custo salvo com sucesso');
+    }catch(err){
+      alert('Erro ao salvar custo');
+    }
   });
 
   function renderCustos(){
@@ -277,19 +358,34 @@
   const formVenda = document.getElementById('form-venda');
   const vendasAnimais = document.getElementById('vendaAnimais');
   const tbodyVendas = document.querySelector('#vendas-list tbody');
+  const precoArrobaInput = document.getElementById('precoArroba');
 
   formVenda.addEventListener('submit', e => {
     e.preventDefault();
-    const precoArroba = Number(document.getElementById('precoArroba').value);
+    const precoArroba = Number(precoArrobaInput.value);
     const selecionados = [...vendasAnimais.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value);
-    if(!precoArroba || !selecionados.length) return;
-    const venda = {id: crypto.randomUUID(), data: new Date().toISOString().split('T')[0], animalIds: selecionados, precoArroba};
-    state.vendas = [...state.vendas, venda];
-    state.rebanho = state.rebanho.filter(a => !selecionados.includes(a.id));
-    save('gado.vendas', state.vendas);
-    save('gado.rebanho', state.rebanho);
-    formVenda.reset();
-    renderAll();
+    if(!precoArroba){
+      precoArrobaInput.setCustomValidity('Informe o preço');
+      precoArrobaInput.reportValidity();
+      alert('Preencha os campos obrigatórios');
+      return;
+    } else precoArrobaInput.setCustomValidity('');
+    if(!selecionados.length){
+      alert('Selecione ao menos um animal');
+      return;
+    }
+    try{
+      const venda = {id: crypto.randomUUID(), data: new Date().toISOString().split('T')[0], animalIds: selecionados, precoArroba};
+      state.vendas = [...state.vendas, venda];
+      state.rebanho = state.rebanho.filter(a => !selecionados.includes(a.id));
+      save('gado.vendas', state.vendas);
+      save('gado.rebanho', state.rebanho);
+      formVenda.reset();
+      renderAll();
+      alert('Venda salva com sucesso');
+    }catch(err){
+      alert('Erro ao salvar venda');
+    }
   });
 
   function renderVendas(){
@@ -307,27 +403,51 @@
   const selectTratAnimal = document.getElementById('tratAnimalId');
   const tbodyTratamentos = document.querySelector('#tratamentos-list tbody');
   const remindersUl = document.getElementById('tratamentos-reminders');
+  const tratTipoInput = document.getElementById('tratTipo');
+  const tratDataInput = document.getElementById('tratData');
 
   if(formTratamento){
     formTratamento.addEventListener('submit', async e => {
       e.preventDefault();
       const animalId = selectTratAnimal.value;
-      const tipo = document.getElementById('tratTipo').value.trim();
+      const tipo = tratTipoInput.value.trim();
       const descricao = document.getElementById('tratDesc').value.trim();
-      const dataAplicacao = document.getElementById('tratData').value;
+      const dataAplicacao = tratDataInput.value;
       const proximaDose = document.getElementById('tratProx').value;
-      if(!animalId || !tipo || !dataAplicacao) return;
-      const docsInput = document.getElementById('tratDocs');
-      const documentos = await Promise.all([...docsInput.files].map(f => new Promise(res => {
-        const reader = new FileReader();
-        reader.onload = () => res({nome: f.name, conteudo: reader.result});
-        reader.readAsDataURL(f);
-      })));
-      const tratamento = {id: crypto.randomUUID(), animalId, tipo, descricao, dataAplicacao, proximaDose, documentos};
-      state.tratamentos = [...state.tratamentos, tratamento];
-      save('gado.tratamentos', state.tratamentos);
-      formTratamento.reset();
-      renderAll();
+      if(!animalId){
+        selectTratAnimal.setCustomValidity('Selecione um animal');
+        selectTratAnimal.reportValidity();
+        alert('Preencha os campos obrigatórios');
+        return;
+      } else selectTratAnimal.setCustomValidity('');
+      if(!tipo){
+        tratTipoInput.setCustomValidity('Informe o tipo');
+        tratTipoInput.reportValidity();
+        alert('Preencha os campos obrigatórios');
+        return;
+      } else tratTipoInput.setCustomValidity('');
+      if(!dataAplicacao){
+        tratDataInput.setCustomValidity('Informe a data');
+        tratDataInput.reportValidity();
+        alert('Preencha os campos obrigatórios');
+        return;
+      } else tratDataInput.setCustomValidity('');
+      try{
+        const docsInput = document.getElementById('tratDocs');
+        const documentos = await Promise.all([...docsInput.files].map(f => new Promise(res => {
+          const reader = new FileReader();
+          reader.onload = () => res({nome: f.name, conteudo: reader.result});
+          reader.readAsDataURL(f);
+        })));
+        const tratamento = {id: crypto.randomUUID(), animalId, tipo, descricao, dataAplicacao, proximaDose, documentos};
+        state.tratamentos = [...state.tratamentos, tratamento];
+        save('gado.tratamentos', state.tratamentos);
+        formTratamento.reset();
+        renderAll();
+        alert('Tratamento salvo com sucesso');
+      }catch(err){
+        alert('Erro ao salvar tratamento');
+      }
     });
   }
 
@@ -349,14 +469,25 @@
     if(!remindersUl) return;
     remindersUl.innerHTML = '';
     const today = new Date().toISOString().split('T')[0];
+    const now = Date.now();
     state.tratamentos
-      .filter(t => t.proximaDose && t.proximaDose > today)
+      .filter(t => t.proximaDose && t.proximaDose >= today)
       .sort((a,b) => a.proximaDose.localeCompare(b.proximaDose))
       .forEach(t => {
         const animal = state.rebanho.find(a => a.id === t.animalId) || {};
         const li = document.createElement('li');
         li.textContent = `${animal.brinco || ''}: ${t.tipo} em ${t.proximaDose}`;
         remindersUl.appendChild(li);
+        if(Notification.permission === 'granted'){
+          const target = new Date(t.proximaDose).getTime();
+          const diff = target - now;
+          const notify = () => new Notification(`Lembrete ${animal.brinco || ''}`, {body: `${t.tipo} hoje`});
+          if(diff <= 0){
+            notify();
+          } else if(diff <= 86400000){
+            setTimeout(notify, diff);
+          }
+        }
       });
   }
 
@@ -377,13 +508,17 @@
   }
 
   async function updateForecast(){
+    setSyncStatus('Sincronizando...', true);
     try {
       const res = await fetch('/forecast');
       forecast = await res.json();
       renderPlanejamento();
       renderAlertas();
+      setSyncStatus('Atualizado');
     } catch(err){
       console.error('Forecast failed', err);
+      setSyncStatus('Falha');
+      alert('Falha ao atualizar previsão');
     }
   }
 
@@ -453,6 +588,7 @@
 
   async function sync(){
     if(!navigator.onLine) return;
+    setSyncStatus('Sincronizando...', true);
     try{
       const payload = { since: lastSync, animals: dirtyAnimals, pesagens: [] };
       const res = await fetch('/sync', {
@@ -480,8 +616,11 @@
       });
       save('gado.rebanho', state.rebanho);
       renderAll();
+      setSyncStatus('Atualizado');
     }catch(err){
       console.error('Sync failed', err);
+      setSyncStatus('Falha');
+      alert('Falha ao sincronizar');
     }
   }
 
