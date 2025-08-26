@@ -13,6 +13,7 @@
       <button type="button" data-tab="pesagens" aria-selected="false">Pesagens</button>
       <button type="button" data-tab="custos" aria-selected="false">Custos</button>
       <button type="button" data-tab="vendas" aria-selected="false">Vendas</button>
+      <button type="button" data-tab="saude" aria-selected="false">Saúde</button>
       <button type="button" data-tab="relatorios" aria-selected="false">Relatórios</button>
     </nav>
   </header>
@@ -103,6 +104,32 @@
         </thead>
         <tbody></tbody>
       </table>
+    </section>
+    <section id="tab-saude" class="hidden">
+      <h2>Saúde</h2>
+      <form id="form-tratamento">
+        <label for="tratAnimalId">Animal</label>
+        <select id="tratAnimalId"></select>
+        <label for="tratTipo">Tipo</label>
+        <input type="text" id="tratTipo" required>
+        <label for="tratDesc">Descrição</label>
+        <input type="text" id="tratDesc">
+        <label for="tratData">Data Aplicação</label>
+        <input type="date" id="tratData" required>
+        <label for="tratProx">Próxima Dose</label>
+        <input type="date" id="tratProx">
+        <label for="tratDocs">Documentos</label>
+        <input type="file" id="tratDocs" multiple>
+        <button type="submit">Salvar</button>
+      </form>
+      <table id="tratamentos-list">
+        <thead>
+          <tr><th>Brinco</th><th>Tipo</th><th>Data</th><th>Próxima Dose</th><th>Documentos</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <h3>Lembretes</h3>
+      <ul id="tratamentos-reminders"></ul>
     </section>
     <section id="tab-relatorios" class="hidden">
       <h2>Relatórios</h2>
