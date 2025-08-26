@@ -18,8 +18,8 @@
   // Dados de teste se base vazia
   if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length){
     state.rebanho = [
-      {id: crypto.randomUUID(), brinco:'A-001', peso:200, fornecedor:'Leilão X', preco:2200, pesoEntrada:190},
-      {id: crypto.randomUUID(), brinco:'B-010', peso:280, fornecedor:'Fazenda Y', preco:2700, pesoEntrada:270}
+      {id: crypto.randomUUID(), nascimento:'2022-01-01', raca:'Nelore', status:'ativo', brinco:'A-001', peso:200, fornecedor:'Leilão X', preco:2200, pesoEntrada:190},
+      {id: crypto.randomUUID(), nascimento:'2022-02-15', raca:'Angus', status:'ativo', brinco:'B-010', peso:280, fornecedor:'Fazenda Y', preco:2700, pesoEntrada:270}
     ];
     save('gado.rebanho', state.rebanho);
     save('gado.pesagens', state.pesagens);
@@ -49,9 +49,28 @@
   // Rebanho
   const formRebanho = document.getElementById('form-rebanho');
   const tbodyRebanho = document.querySelector('#rebanho-list tbody');
+  const idInput = document.getElementById('animalId');
+  const nascInput = document.getElementById('nascimento');
+  const racaInput = document.getElementById('raca');
+  const statusSelect = document.getElementById('status');
+  const scanBtn = document.getElementById('scanTag');
+  if (scanBtn) {
+    scanBtn.addEventListener('click', async () => {
+      try {
+        const code = await scanTag();
+        if (code) idInput.value = code;
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }
 
   formRebanho.addEventListener('submit', e => {
     e.preventDefault();
+    const idVal = idInput.value.trim() || crypto.randomUUID();
+    const nascimento = nascInput.value;
+    const raca = racaInput.value.trim();
+    const status = statusSelect.value;
     const brinco = document.getElementById('brinco').value.trim();
     const peso = Number(document.getElementById('peso').value);
     const fornecedor = document.getElementById('fornecedor').value.trim();
@@ -60,10 +79,11 @@
     const pesoEntradaVal = document.getElementById('pesoEntrada').value;
     const pesoEntrada = pesoEntradaVal ? Number(pesoEntradaVal) : peso;
     if(!brinco || !peso) return;
-    const animal = {id: crypto.randomUUID(), brinco, peso, fornecedor, preco, pesoEntrada};
+    const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada};
     state.rebanho = [...state.rebanho, animal];
     save('gado.rebanho', state.rebanho);
     formRebanho.reset();
+    statusSelect.value = 'ativo';
     renderAll();
   });
 
@@ -77,7 +97,7 @@
     tbodyRebanho.innerHTML = '';
     state.rebanho.forEach(a => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${a.brinco}</td><td>${a.peso}</td><td>${a.fornecedor || ''}</td><td>${a.preco ?? ''}</td><td>${a.pesoEntrada ?? ''}</td><td><button data-id="${a.id}">Remover</button></td>`;
+      tr.innerHTML = `<td>${a.id}</td><td>${a.nascimento || ''}</td><td>${a.raca || ''}</td><td>${a.status || ''}</td><td>${a.brinco}</td><td>${a.peso}</td><td>${a.fornecedor || ''}</td><td>${a.preco ?? ''}</td><td>${a.pesoEntrada ?? ''}</td><td><button data-id="${a.id}">Remover</button></td>`;
       tbodyRebanho.appendChild(tr);
     });
     tbodyRebanho.querySelectorAll('button').forEach(btn => {
