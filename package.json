@@ -1,9 +1,9 @@
 {
   "name": "gado-api",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "public/server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node public/server.js",
     "test": "node -e \"console.log('No tests')\""
   },
   "dependencies": {
