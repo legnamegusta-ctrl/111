@@ -20,15 +20,26 @@
   let forecast = { predictions: [], custoPorKg: 0 };
 
   const syncStatusEl = document.getElementById('syncStatus');
+  const manualSyncBtn = document.getElementById('manualSync');
+  const toastEl = document.getElementById('toast');
+
   function setSyncStatus(msg, loading=false){
     if(syncStatusEl){
       syncStatusEl.textContent = msg;
       syncStatusEl.classList.toggle('loading', loading);
     }
   }
+
+  function showToast(msg, type='info'){
+    if(!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.className = type + ' show';
+    setTimeout(()=>{toastEl.className = 'hidden';}, 3000);
+  }
   if('Notification' in window && Notification.permission === 'default'){
     Notification.requestPermission();
   }
+  if(window.feather) window.feather.replace();
 
   // Dados de teste se base vazia
   if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length && !state.tratamentos.length){
@@ -77,6 +88,25 @@
   const pesoInput = document.getElementById('peso');
   const scanBtn = document.getElementById('scanTag');
   const searchRebanho = document.getElementById('searchRebanho');
+  const steps = formRebanho ? formRebanho.querySelectorAll('fieldset.step') : [];
+  let currentStep = 0;
+  function showStep(stepIndex){
+    steps.forEach((fs, idx) => fs.classList.toggle('hidden', idx !== stepIndex));
+    currentStep = stepIndex;
+  }
+  if(formRebanho){
+    showStep(0);
+    formRebanho.querySelectorAll('.nextStep').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inputs = steps[currentStep].querySelectorAll('input, select');
+        for(const inp of inputs){
+          if(!inp.checkValidity()){ inp.reportValidity(); showToast('Preencha os campos obrigatórios','error'); return; }
+        }
+        showStep(currentStep + 1);
+      });
+    });
+    formRebanho.querySelectorAll('.prevStep').forEach(btn => btn.addEventListener('click', () => showStep(currentStep - 1)));
+  }
   if (scanBtn) {
     scanBtn.addEventListener('click', async () => {
       try {
@@ -113,6 +143,19 @@
     save('gado.dirtyAnimals', dirtyAnimals);
   }
 
+  function updateOnlineStatus(){
+    if(navigator.onLine){
+      setSyncStatus('Online');
+      syncStatusEl.classList.remove('offline');
+    }else{
+      setSyncStatus('Sem internet');
+      syncStatusEl.classList.add('offline');
+    }
+  }
+  window.addEventListener('online', () => {updateOnlineStatus(); sync();});
+  window.addEventListener('offline', updateOnlineStatus);
+  if(manualSyncBtn) manualSyncBtn.addEventListener('click', sync);
+
 
   async function loadFromFirestore(){
     if(!window.db) return;
@@ -129,7 +172,7 @@
     }catch(err){
       console.error("Firebase fetch failed", err);
       setSyncStatus('Falha');
-      alert('Falha ao carregar dados');
+      showToast('Falha ao carregar dados','error');
     }
   }
 
@@ -149,13 +192,13 @@
     if(!brinco){
       brincoInput.setCustomValidity('Informe o brinco');
       brincoInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else brincoInput.setCustomValidity('');
     if(!peso){
       pesoInput.setCustomValidity('Informe o peso');
       pesoInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+       showToast('Preencha os campos obrigatórios','error');
       return;
     } else pesoInput.setCustomValidity('');
     const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada, updatedAt: Date.now()};
@@ -175,9 +218,10 @@
       statusSelect.value = 'ativo';
       submitRebanhoBtn.textContent = 'Salvar';
       renderAll();
-      alert('Animal salvo com sucesso');
+      showToast('Animal salvo com sucesso','success');
+      showStep(0);
     }catch(err){
-      alert('Erro ao salvar animal');
+      showToast('Erro ao salvar animal','error');
     }
   });
 
@@ -203,6 +247,7 @@
     document.getElementById('preco').value = a.preco ?? '';
     document.getElementById('pesoEntrada').value = a.pesoEntrada ?? '';
     submitRebanhoBtn.textContent = 'Atualizar';
+    showStep(0);
   }
 
     function renderRebanho(){
@@ -244,25 +289,25 @@
     if(!animalId){
       selectAnimal.setCustomValidity('Selecione um animal');
       selectAnimal.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else selectAnimal.setCustomValidity('');
     if(!peso){
       pesoPesagemInput.setCustomValidity('Informe o peso');
       pesoPesagemInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else pesoPesagemInput.setCustomValidity('');
     if(!data){
       dataPesagemInput.setCustomValidity('Informe a data');
       dataPesagemInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else dataPesagemInput.setCustomValidity('');
     if(!operador){
       operadorInput.setCustomValidity('Informe o operador');
       operadorInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else operadorInput.setCustomValidity('');
     try{
@@ -275,9 +320,9 @@
       dataPesagemInput.value = new Date().toISOString().split('T')[0];
       renderAll();
       updatePesoChart(animalId);
-      alert('Pesagem salva com sucesso');
+      showToast('Pesagem salva com sucesso','success');
     }catch(err){
-      alert('Erro ao salvar pesagem');
+      showToast('Erro ao salvar pesagem','error');
     }
   });
 
@@ -322,13 +367,13 @@
     if(!desc){
       custoDescInput.setCustomValidity('Informe a descrição');
       custoDescInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else custoDescInput.setCustomValidity('');
     if(!valor){
       custoValorInput.setCustomValidity('Informe o valor');
       custoValorInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else custoValorInput.setCustomValidity('');
     try{
@@ -337,9 +382,9 @@
       save('gado.custos', state.custos);
       formCusto.reset();
       renderAll();
-      alert('Custo salvo com sucesso');
+      showToast('Custo salvo com sucesso','success');
     }catch(err){
-      alert('Erro ao salvar custo');
+      showToast('Erro ao salvar custo','error');
     }
   });
 
@@ -367,11 +412,11 @@
     if(!precoArroba){
       precoArrobaInput.setCustomValidity('Informe o preço');
       precoArrobaInput.reportValidity();
-      alert('Preencha os campos obrigatórios');
+      showToast('Preencha os campos obrigatórios','error');
       return;
     } else precoArrobaInput.setCustomValidity('');
     if(!selecionados.length){
-      alert('Selecione ao menos um animal');
+      showToast('Selecione ao menos um animal','error');
       return;
     }
     try{
@@ -382,9 +427,9 @@
       save('gado.rebanho', state.rebanho);
       formVenda.reset();
       renderAll();
-      alert('Venda salva com sucesso');
+      showToast('Venda salva com sucesso','success');
     }catch(err){
-      alert('Erro ao salvar venda');
+      showToast('Erro ao salvar venda','error');
     }
   });
 
@@ -417,19 +462,19 @@
       if(!animalId){
         selectTratAnimal.setCustomValidity('Selecione um animal');
         selectTratAnimal.reportValidity();
-        alert('Preencha os campos obrigatórios');
+        showToast('Preencha os campos obrigatórios','error');
         return;
       } else selectTratAnimal.setCustomValidity('');
       if(!tipo){
         tratTipoInput.setCustomValidity('Informe o tipo');
         tratTipoInput.reportValidity();
-        alert('Preencha os campos obrigatórios');
+        showToast('Preencha os campos obrigatórios','error');
         return;
       } else tratTipoInput.setCustomValidity('');
       if(!dataAplicacao){
         tratDataInput.setCustomValidity('Informe a data');
         tratDataInput.reportValidity();
-        alert('Preencha os campos obrigatórios');
+        showToast('Preencha os campos obrigatórios','error');
         return;
       } else tratDataInput.setCustomValidity('');
       try{
@@ -444,9 +489,9 @@
         save('gado.tratamentos', state.tratamentos);
         formTratamento.reset();
         renderAll();
-        alert('Tratamento salvo com sucesso');
+        showToast('Tratamento salvo com sucesso','success');
       }catch(err){
-        alert('Erro ao salvar tratamento');
+        showToast('Erro ao salvar tratamento','error');
       }
     });
   }
@@ -518,7 +563,7 @@
     } catch(err){
       console.error('Forecast failed', err);
       setSyncStatus('Falha');
-      alert('Falha ao atualizar previsão');
+      showToast('Falha ao atualizar previsão','error');
     }
   }
 
@@ -620,7 +665,7 @@
     }catch(err){
       console.error('Sync failed', err);
       setSyncStatus('Falha');
-      alert('Falha ao sincronizar');
+      showToast('Falha ao sincronizar','error');
     }
   }
 
@@ -640,6 +685,6 @@
   document.getElementById('dataPesagem').value = new Date().toISOString().split('T')[0];
   renderAll();
   loadFromFirestore();
+  updateOnlineStatus();
   if(navigator.onLine) sync();
-  window.addEventListener('online', sync);
 })();
