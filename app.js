@@ -89,6 +89,22 @@
     save('gado.dirtyAnimals', dirtyAnimals);
   }
 
+
+  async function loadFromFirestore(){
+    if(!window.db) return;
+    try{
+      const snap = await window.db.collection("animals").get();
+      const animals = snap.docs.map(d => d.data());
+      if(animals.length){
+        state.rebanho = animals;
+        save("gado.rebanho", state.rebanho);
+        renderAll();
+      }
+    }catch(err){
+      console.error("Firebase fetch failed", err);
+    }
+  }
+
   formRebanho.addEventListener('submit', e => {
     e.preventDefault();
     const idVal = idInput.value.trim() || crypto.randomUUID();
@@ -107,6 +123,9 @@
     state.rebanho = [...state.rebanho, animal];
     save('gado.rebanho', state.rebanho);
     markDirtyAnimal(animal);
+    if(window.db){
+      window.db.collection("animals").doc(idVal).set(animal).catch(err => console.error("Firebase save failed", err));
+    }
     formRebanho.reset();
     statusSelect.value = 'ativo';
     renderAll();
@@ -441,6 +460,7 @@
   // Inicializa
   document.getElementById('dataPesagem').value = new Date().toISOString().split('T')[0];
   renderAll();
+  loadFromFirestore();
   if(navigator.onLine) sync();
   window.addEventListener('online', sync);
 })();
