@@ -15,6 +15,8 @@
     vendas: load('gado.vendas', []),
     tratamentos: load('gado.tratamentos', [])
   };
+  let dirtyAnimals = load('gado.dirtyAnimals', []);
+  let lastSync = load('gado.lastSync', 0);
 
   // Dados de teste se base vazia
   if(!state.rebanho.length && !state.pesagens.length && !state.custos.length && !state.vendas.length && !state.tratamentos.length){
@@ -68,6 +70,18 @@
     });
   }
 
+  function markDirtyAnimal(animal){
+    const idx = dirtyAnimals.findIndex(a => a.id === animal.id);
+    if(idx >= 0) dirtyAnimals[idx] = animal; else dirtyAnimals.push(animal);
+    save('gado.dirtyAnimals', dirtyAnimals);
+  }
+  function markDeletedAnimal(id){
+    const record = { id, deleted: true, updatedAt: Date.now() };
+    const idx = dirtyAnimals.findIndex(a => a.id === id);
+    if(idx >= 0) dirtyAnimals[idx] = record; else dirtyAnimals.push(record);
+    save('gado.dirtyAnimals', dirtyAnimals);
+  }
+
   formRebanho.addEventListener('submit', e => {
     e.preventDefault();
     const idVal = idInput.value.trim() || crypto.randomUUID();
@@ -82,9 +96,10 @@
     const pesoEntradaVal = document.getElementById('pesoEntrada').value;
     const pesoEntrada = pesoEntradaVal ? Number(pesoEntradaVal) : peso;
     if(!brinco || !peso) return;
-    const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada};
+    const animal = {id: idVal, nascimento, raca, status, brinco, peso, fornecedor, preco, pesoEntrada, updatedAt: Date.now()};
     state.rebanho = [...state.rebanho, animal];
     save('gado.rebanho', state.rebanho);
+    markDirtyAnimal(animal);
     formRebanho.reset();
     statusSelect.value = 'ativo';
     renderAll();
@@ -95,6 +110,7 @@
     state.tratamentos = state.tratamentos.filter(t => t.animalId !== id);
     save('gado.rebanho', state.rebanho);
     save('gado.tratamentos', state.tratamentos);
+    markDeletedAnimal(id);
     renderAll();
   }
 
@@ -332,6 +348,40 @@
     doc.save('relatorio.pdf');
   });
 
+  async function sync(){
+    if(!navigator.onLine) return;
+    try{
+      const payload = { since: lastSync, animals: dirtyAnimals, pesagens: [] };
+      const res = await fetch('/sync', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      lastSync = data.timestamp;
+      save('gado.lastSync', lastSync);
+      dirtyAnimals = [];
+      save('gado.dirtyAnimals', dirtyAnimals);
+      data.animals.forEach(a => {
+        const idx = state.rebanho.findIndex(r => r.id === a.id);
+        if(a.deleted){
+          if(idx >= 0) state.rebanho.splice(idx,1);
+        } else if(idx >= 0){
+          const local = state.rebanho[idx];
+          if(!local.updatedAt || a.updatedAt > local.updatedAt){
+            state.rebanho[idx] = { ...local, ...a };
+          }
+        } else {
+          state.rebanho.push(a);
+        }
+      });
+      save('gado.rebanho', state.rebanho);
+      renderAll();
+    }catch(err){
+      console.error('Sync failed', err);
+    }
+  }
+
   function renderAll(){
     renderRebanho();
     renderPesagens();
@@ -344,4 +394,6 @@
   // Inicializa
   document.getElementById('dataPesagem').value = new Date().toISOString().split('T')[0];
   renderAll();
+  if(navigator.onLine) sync();
+  window.addEventListener('online', sync);
 })();
